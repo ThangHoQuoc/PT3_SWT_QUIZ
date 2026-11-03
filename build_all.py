@@ -1,7 +1,8 @@
-# build_all.py - Generates all learning materials for 300 questions with keyboard navigation
+# build_all.py - Generates all learning materials for 300 questions with keyboard navigation and jump-to-question feature
 
 import os
 import json
+import shutil
 import data_ch1
 import data_ch2
 import data_ch3
@@ -157,7 +158,7 @@ with open(pt3_path, "w", encoding="utf-8") as f:
     f.write("\n".join(pt3_lines))
 print(f"Saved: {pt3_path}")
 
-# 4. Build quiz_practice.html with full keyboard navigation (Arrows, Enter, A/B/C/D)
+# 4. Build quiz_practice.html with full keyboard navigation and Jump-To-Question
 html_path = os.path.join(BASE_DIR, "quiz_practice.html")
 questions_json_str = json.dumps(all_questions, ensure_ascii=False)
 
@@ -277,12 +278,37 @@ html_content = f"""<!DOCTYPE html>
         .stats-bar {{
             display: flex;
             justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
             background: var(--code-bg);
             padding: 12px 18px;
             border-radius: 8px;
             margin: 16px 0;
             font-size: 0.9rem;
             font-weight: 500;
+        }}
+        .jump-box {{
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }}
+        .jump-input {{
+            width: 68px;
+            text-align: center;
+            font-weight: 700;
+            font-size: 0.95rem;
+            padding: 5px 8px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: var(--card-bg);
+            color: var(--primary);
+            transition: border-color 0.2s;
+        }}
+        .jump-input:focus {{
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(37,99,235,0.2);
         }}
         .card {{
             background: var(--card-bg);
@@ -380,7 +406,7 @@ html_content = f"""<!DOCTYPE html>
         <header>
             <div class="header-top">
                 <div>
-                    <h1>SWT301 Quiz & Exam Practice (300 Questions)</h1>
+                    <h1>SWT301 Exam Practice (300 Questions)</h1>
                     <p style="color: var(--text-muted); font-size: 0.9rem;">FPT University | ISTQB Foundation 4th Edition</p>
                 </div>
                 <div style="display: flex; gap: 8px; align-items: center;">
@@ -413,7 +439,15 @@ html_content = f"""<!DOCTYPE html>
         </header>
 
         <div class="stats-bar">
-            <div>Câu hỏi: <span id="q-idx" style="font-weight: 700; color: var(--primary);">1</span> / <span id="q-total">180</span></div>
+            <div class="jump-box">
+                <span><b>Câu hỏi:</b></span>
+                <input type="number" id="jump-input" class="jump-input" min="1" max="180" value="1" 
+                       title="Nhập số câu và bấm Enter hoặc nút Đến"
+                       onkeydown="if(event.key==='Enter'){{event.preventDefault();jumpToQuestion();}}" 
+                       onchange="jumpToQuestion()">
+                <span>/ <span id="q-total" style="font-weight: 700;">180</span></span>
+                <button onclick="jumpToQuestion()" style="padding: 4px 10px; font-size: 0.85rem; border-radius: 6px;">Đến</button>
+            </div>
             <div>Đúng: <span id="score-correct" style="color: var(--success); font-weight: 700;">0</span></div>
             <div>Sai: <span id="score-wrong" style="color: var(--danger); font-weight: 700;">0</span></div>
             <div>Tỷ lệ: <span id="score-pct" style="font-weight: 700;">0%</span></div>
@@ -460,7 +494,7 @@ html_content = f"""<!DOCTYPE html>
 
         function setupKeyboardNavigation() {{
             document.addEventListener('keydown', function(e) {{
-                // Do not trigger shortcuts if user is focusing a select or form input
+                // Do not trigger global shortcuts if user is typing inside the jump input or a select
                 if (e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {{
                     return;
                 }}
@@ -491,6 +525,16 @@ html_content = f"""<!DOCTYPE html>
                     selectOption('E', activeQuestions[currentIndex].type === 'Multiple');
                 }}
             }});
+        }}
+
+        function jumpToQuestion() {{
+            const input = document.getElementById('jump-input');
+            let target = parseInt(input.value, 10);
+            if (isNaN(target) || target < 1) target = 1;
+            if (target > activeQuestions.length) target = activeQuestions.length;
+            currentIndex = target - 1;
+            renderQuestion();
+            input.blur(); // Remove focus so arrow keys work immediately
         }}
 
         function toggleTheme() {{
@@ -531,8 +575,12 @@ html_content = f"""<!DOCTYPE html>
         function renderQuestion() {{
             if (activeQuestions.length === 0) return;
             const q = activeQuestions[currentIndex];
-            document.getElementById('q-idx').innerText = currentIndex + 1;
+            
+            const jumpInput = document.getElementById('jump-input');
+            jumpInput.value = currentIndex + 1;
+            jumpInput.max = activeQuestions.length;
             document.getElementById('q-total').innerText = activeQuestions.length;
+
             document.getElementById('q-chapter').innerText = q.id + " | " + q.chapter + " - " + q.topic;
             document.getElementById('q-type').innerText = q.type === 'Multiple' ? 'Chọn nhiều đáp án' : 'Chọn 1 đáp án';
             document.getElementById('q-text').innerText = q.question;
@@ -665,4 +713,10 @@ html_content = f"""<!DOCTYPE html>
 with open(html_path, "w", encoding="utf-8") as f:
     f.write(html_content)
 print(f"Saved: {html_path}")
-print("BUILD COMPLETED WITH KEYBOARD NAVIGATION!")
+
+# Copy to index.html as well
+index_path = os.path.join(BASE_DIR, "index.html")
+shutil.copyfile(html_path, index_path)
+print(f"Copied to: {index_path}")
+
+print("BUILD COMPLETED WITH JUMP-TO-QUESTION FEATURE!")
