@@ -1,4 +1,4 @@
-# build_all.py - Generates all learning materials for 300 questions with keyboard navigation and jump-to-question feature
+# build_all.py - Generates all learning materials for 300 questions with keyboard navigation, jump-to-question, and wrong questions list review
 
 import os
 import json
@@ -158,7 +158,7 @@ with open(pt3_path, "w", encoding="utf-8") as f:
     f.write("\n".join(pt3_lines))
 print(f"Saved: {pt3_path}")
 
-# 4. Build quiz_practice.html with full keyboard navigation and Jump-To-Question
+# 4. Build quiz_practice.html with full keyboard navigation, Jump-To-Question, and Wrong Questions List
 html_path = os.path.join(BASE_DIR, "quiz_practice.html")
 questions_json_str = json.dumps(all_questions, ensure_ascii=False)
 
@@ -310,6 +310,77 @@ html_content = f"""<!DOCTYPE html>
             border-color: var(--primary);
             box-shadow: 0 0 0 2px rgba(37,99,235,0.2);
         }}
+        .wrong-badge-btn {{
+            padding: 4px 10px;
+            font-size: 0.85rem;
+            border-radius: 6px;
+            background: #fee2e2;
+            color: #b91c1c;
+            border: 1px solid #fca5a5;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }}
+        .wrong-badge-btn:hover {{
+            background: #fecdd3;
+            border-color: #f87171;
+        }}
+        .wrong-panel {{
+            display: none;
+            background: #fff1f2;
+            border: 1px solid #fecdd3;
+            border-radius: 10px;
+            padding: 16px 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+            animation: fadeIn 0.2s ease-in-out;
+        }}
+        [data-theme="dark"] .wrong-panel {{
+            background: #3b0714;
+            border-color: #881337;
+            color: #fecdd3;
+        }}
+        .wrong-panel-header {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }}
+        .wrong-items-container {{
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }}
+        .wrong-chip {{
+            padding: 5px 12px;
+            font-size: 0.88rem;
+            font-weight: 600;
+            border-radius: 6px;
+            border: 1px solid #f87171;
+            background: var(--card-bg);
+            color: #dc2626;
+            cursor: pointer;
+            transition: all 0.15s;
+        }}
+        .wrong-chip:hover {{
+            background: #fee2e2;
+            transform: translateY(-1px);
+        }}
+        [data-theme="dark"] .wrong-chip {{
+            background: #1e293b;
+            color: #f87171;
+            border-color: #b91c1c;
+        }}
+        [data-theme="dark"] .wrong-chip:hover {{
+            background: #4c0519;
+        }}
+        @keyframes fadeIn {{
+            from {{ opacity: 0; transform: translateY(-4px); }}
+            to {{ opacity: 1; transform: translateY(0); }}
+        }}
         .card {{
             background: var(--card-bg);
             border: 1px solid var(--border);
@@ -449,8 +520,26 @@ html_content = f"""<!DOCTYPE html>
                 <button onclick="jumpToQuestion()" style="padding: 4px 10px; font-size: 0.85rem; border-radius: 6px;">Đến</button>
             </div>
             <div>Đúng: <span id="score-correct" style="color: var(--success); font-weight: 700;">0</span></div>
-            <div>Sai: <span id="score-wrong" style="color: var(--danger); font-weight: 700;">0</span></div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span>Sai: <span id="score-wrong" style="color: var(--danger); font-weight: 700;">0</span></span>
+                <button id="view-wrong-btn" class="wrong-badge-btn" onclick="toggleWrongList()">
+                    <span>📋 Xem câu sai</span> (<span id="wrong-btn-count">0</span>)
+                </button>
+            </div>
             <div>Tỷ lệ: <span id="score-pct" style="font-weight: 700;">0%</span></div>
+        </div>
+
+        <!-- Wrong questions panel -->
+        <div id="wrong-list-panel" class="wrong-panel">
+            <div class="wrong-panel-header">
+                <span style="font-weight: 700; color: #b91c1c; font-size: 1rem;">
+                    ❌ Danh sách câu làm sai (<span id="wrong-count-badge">0</span> câu) - Nhấp vào câu để xem lại:
+                </span>
+                <button onclick="toggleWrongList()" style="padding: 2px 10px; font-size: 0.85rem; border-radius: 4px; border: 1px solid var(--border); background: var(--card-bg); color: var(--text-main); cursor: pointer;">✕ Đóng</button>
+            </div>
+            <div id="wrong-items-container" class="wrong-items-container">
+                <!-- Dynamically populated chips -->
+            </div>
         </div>
 
         <div class="card" id="question-card">
@@ -484,6 +573,7 @@ html_content = f"""<!DOCTYPE html>
         let currentIndex = 0;
         let selectedOptions = new Set();
         let userAnswers = {{}};
+        let wrongQuestionIndices = new Set();
         let correctCount = 0;
         let wrongCount = 0;
 
@@ -494,7 +584,6 @@ html_content = f"""<!DOCTYPE html>
 
         function setupKeyboardNavigation() {{
             document.addEventListener('keydown', function(e) {{
-                // Do not trigger global shortcuts if user is typing inside the jump input or a select
                 if (e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {{
                     return;
                 }}
@@ -534,7 +623,7 @@ html_content = f"""<!DOCTYPE html>
             if (target > activeQuestions.length) target = activeQuestions.length;
             currentIndex = target - 1;
             renderQuestion();
-            input.blur(); // Remove focus so arrow keys work immediately
+            input.blur();
         }}
 
         function toggleTheme() {{
@@ -561,15 +650,17 @@ html_content = f"""<!DOCTYPE html>
             }} else if (val === 'CH6') {{
                 activeQuestions = rawQuestions.filter(q => q.chapter.startsWith('Chapter 6'));
             }} else if (val === 'MOCK60') {{
-                // 60 representative questions
                 activeQuestions = rawQuestions.filter((q, idx) => idx % 5 === 0).slice(0, 60);
             }}
             currentIndex = 0;
             userAnswers = {{}};
+            wrongQuestionIndices.clear();
             correctCount = 0;
             wrongCount = 0;
+            document.getElementById('wrong-list-panel').style.display = 'none';
             updateStats();
             renderQuestion();
+            renderWrongList();
         }}
 
         function renderQuestion() {{
@@ -602,7 +693,6 @@ html_content = f"""<!DOCTYPE html>
                 container.appendChild(btn);
             }});
 
-            // Check if already answered
             if (userAnswers[q.id]) {{
                 showAnswerResults(userAnswers[q.id]);
             }}
@@ -610,7 +700,7 @@ html_content = f"""<!DOCTYPE html>
 
         function selectOption(letter, isMultiple) {{
             const q = activeQuestions[currentIndex];
-            if (userAnswers[q.id]) return; // already submitted
+            if (userAnswers[q.id]) return;
 
             if (!isMultiple) {{
                 selectedOptions.clear();
@@ -632,7 +722,7 @@ html_content = f"""<!DOCTYPE html>
 
         function submitAnswer() {{
             const q = activeQuestions[currentIndex];
-            if (userAnswers[q.id]) return; // already submitted
+            if (userAnswers[q.id]) return;
             if (selectedOptions.size === 0) {{
                 alert('Vui lòng chọn ít nhất một đáp án trước khi bấm Enter hoặc kiểm tra!');
                 return;
@@ -642,9 +732,15 @@ html_content = f"""<!DOCTYPE html>
             showAnswerResults(chosen);
 
             const isCorrect = chosen.replace(/\\s/g, '') === q.answer.replace(/\\s/g, '');
-            if (isCorrect) correctCount++;
-            else wrongCount++;
+            if (isCorrect) {{
+                correctCount++;
+                wrongQuestionIndices.delete(currentIndex);
+            }} else {{
+                wrongCount++;
+                wrongQuestionIndices.add(currentIndex);
+            }}
             updateStats();
+            renderWrongList();
         }}
 
         function showAnswerResults(chosen) {{
@@ -679,9 +775,48 @@ html_content = f"""<!DOCTYPE html>
         function updateStats() {{
             document.getElementById('score-correct').innerText = correctCount;
             document.getElementById('score-wrong').innerText = wrongCount;
+            document.getElementById('wrong-btn-count').innerText = wrongQuestionIndices.size;
+            document.getElementById('wrong-count-badge').innerText = wrongQuestionIndices.size;
             const totalAnswered = correctCount + wrongCount;
             const pct = totalAnswered > 0 ? Math.round((correctCount / totalAnswered) * 100) : 0;
             document.getElementById('score-pct').innerText = pct + '%';
+        }}
+
+        function renderWrongList() {{
+            const container = document.getElementById('wrong-items-container');
+            const count = wrongQuestionIndices.size;
+            document.getElementById('wrong-btn-count').innerText = count;
+            document.getElementById('wrong-count-badge').innerText = count;
+
+            container.innerHTML = '';
+            if (count === 0) {{
+                container.innerHTML = '<span style="font-size: 0.9rem; color: var(--text-muted); font-style: italic;">Tuyệt vời! Bạn chưa làm sai câu nào.</span>';
+                return;
+            }}
+
+            const sorted = Array.from(wrongQuestionIndices).sort((a, b) => a - b);
+            sorted.forEach(idx => {{
+                const qNum = idx + 1;
+                const chip = document.createElement('button');
+                chip.className = 'wrong-chip';
+                chip.innerHTML = '<b>Câu ' + qNum + '</b>';
+                chip.title = 'Nhấp để xem lại Câu ' + qNum;
+                chip.onclick = () => {{
+                    currentIndex = idx;
+                    renderQuestion();
+                    window.scrollTo({{ top: document.getElementById('question-card').offsetTop - 20, behavior: 'smooth' }});
+                }};
+                container.appendChild(chip);
+            }});
+        }}
+
+        function toggleWrongList() {{
+            const panel = document.getElementById('wrong-list-panel');
+            const isHidden = panel.style.display === 'none' || panel.style.display === '';
+            panel.style.display = isHidden ? 'block' : 'none';
+            if (isHidden) {{
+                renderWrongList();
+            }}
         }}
 
         function prevQuestion() {{
@@ -719,4 +854,4 @@ index_path = os.path.join(BASE_DIR, "index.html")
 shutil.copyfile(html_path, index_path)
 print(f"Copied to: {index_path}")
 
-print("BUILD COMPLETED WITH JUMP-TO-QUESTION FEATURE!")
+print("BUILD COMPLETED WITH WRONG QUESTIONS LIST REVIEW FEATURE!")
