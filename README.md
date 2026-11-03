@@ -1,6 +1,11 @@
 # ÔN THI SWT301 - PROGRESS TEST 3 & FINAL EXAM (ĐẠI HỌC FPT)
 ## NGÂN HÀNG 300 CÂU HỎI TRẮC NGHIỆM CHUẨN SEB (ISTQB CTFL 4TH EDITION)
 
+🚀 **TRUY CẬP ỨNG DỤNG WEB QUIZ TRỰC TUYẾN TẠI ĐÂY:**  
+👉 **[https://thanghoquoc.github.io/PT3_SWT_QUIZ/](https://thanghoquoc.github.io/PT3_SWT_QUIZ/)** *(Mở trên điện thoại, máy tính, iPad để luyện thi mọi lúc mọi nơi!)*
+
+---
+
 Tài liệu ôn thi toàn diện môn **SWT301 (Software Testing)** bám sát 100% giáo trình tham khảo:
 📖 **Foundations of Software Testing: ISTQB Certification (4th Edition)** - *Rex Black, Dorothy Graham, Erik van Veenendaal*.
 
@@ -8,8 +13,8 @@ Tài liệu ôn thi toàn diện môn **SWT301 (Software Testing)** bám sát 10
 
 ### 🌟 TÍNH NĂNG NỔI BẬT
 
-1. **Ứng dụng Web Quiz thực hành (`quiz_practice.html`):**
-   - Mở trực tiếp trên mọi trình duyệt (Chrome, Edge, Cốc Cốc, Safari) mà không cần cài đặt server.
+1. **Ứng dụng Web Quiz thực hành trực tuyến ([https://thanghoquoc.github.io/PT3_SWT_QUIZ/](https://thanghoquoc.github.io/PT3_SWT_QUIZ/)):**
+   - Đã được triển khai hoàn chỉnh trên **GitHub Pages**.
    - Hỗ trợ **Phím tắt điều hướng nhanh**:
      * ➡ **Mũi tên phải**: Chuyển ngay sang câu tiếp theo.
      * ⬅ **Mũi tên trái**: Quay lại câu trước đó.
@@ -28,7 +33,8 @@ Tài liệu ôn thi toàn diện môn **SWT301 (Software Testing)** bám sát 10
 ### 📂 CẤU TRÚC THƯ MỤC REPOSITORY
 
 ```text
-├── quiz_practice.html              # Ứng dụng Web Quiz 300 câu (có phím tắt Enter, Mũi tên, A/B/C/D)
+├── index.html                      # Trang chủ Web Quiz triển khai trên GitHub Pages
+├── quiz_practice.html              # Bản sao Web Quiz offline
 ├── PT3_Targeted_Review_Ch4_5_6.md   # Tài liệu trọng tâm ôn Progress Test 3 (180 câu + Cheat Sheet)
 ├── SWT301_Full_Question_Bank_300.md # Ngân hàng 300 câu hỏi toàn bộ 6 chương (kèm lời giải chi tiết)
 ├── Final_Exam_Comprehensive_Mock.md # Đề thi thử Final Exam chuẩn SEB (60 câu / 60 phút)
